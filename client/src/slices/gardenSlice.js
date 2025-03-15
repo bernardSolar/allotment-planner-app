@@ -10,6 +10,62 @@ const initialState = {
   selectedElement: null,
 };
 
+// Mock action for development
+export const getUserGardens = createAsyncThunk(
+  'gardens/getUserGardens',
+  async () => {
+    return [];
+  }
+);
+
+// Mock action for development
+export const getGardenDetails = createAsyncThunk(
+  'gardens/getGardenDetails',
+  async () => {
+    return null;
+  }
+);
+
+// Mock action for development
+export const createGarden = createAsyncThunk(
+  'gardens/createGarden',
+  async () => {
+    return {};
+  }
+);
+
+// Mock action for development
+export const updateGarden = createAsyncThunk(
+  'gardens/updateGarden',
+  async () => {
+    return {};
+  }
+);
+
+// Mock action for development
+export const deleteGarden = createAsyncThunk(
+  'gardens/deleteGarden',
+  async () => {
+    return "";
+  }
+);
+
+// Mock action for development
+export const addElement = createAsyncThunk(
+  'gardens/addElement',
+  async () => {
+    return {};
+  }
+);
+
+// Mock action for development
+export const updateElement = createAsyncThunk(
+  'gardens/updateElement',
+  async () => {
+    return {};
+  }
+);
+
 // Garden slice
 export const gardenSlice = createSlice({
   name: 'gardens',
@@ -31,6 +87,23 @@ export const gardenSlice = createSlice({
       state.gardenDetails = null;
     },
   },
+  extraReducers: (builder) => {
+    builder
+      // Get user gardens
+      .addCase(getUserGardens.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(getUserGardens.fulfilled, (state, action) => {
+        state.loading = false;
+        state.gardens = action.payload;
+      })
+      .addCase(getUserGardens.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // Other cases...
+  },
 });
 
 export const {
@@ -40,13 +113,5 @@ export const {
   clearSelectedElement,
   resetGardenDetails,
 } = gardenSlice.actions;
-
-// Mock action for development
-export const getUserGardens = createAsyncThunk(
-  'gardens/getUserGardens',
-  async () => {
-    return [];
-  }
-);
 
 export default gardenSlice.reducer;
