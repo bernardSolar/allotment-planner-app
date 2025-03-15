@@ -95,6 +95,31 @@ An interactive web application for planning and tracking allotment gardens with 
 - Implemented garden creation, selection, and management UI
 - Added comprehensive documentation for the garden planner components
 
+## Next Steps
+
+After reviewing the current implementation, these areas need further work:
+
+1. **Element Palette Integration**:
+   - Connect the palette components to display categorized garden elements
+   - Implement proper rendering of element cards with SVG icons
+   - Fix category tabs functionality (Structures, Plants, Trees, Decorative)
+
+2. **Garden Canvas Integration**:
+   - Properly render the interactive SVG garden editor
+   - Integrate pan/zoom controls
+   - Implement the grid background and element visualization
+
+3. **Garden Management UI**:
+   - Apply consistent styling to garden selection dropdown
+   - Style the garden name input field properly
+   - Add the "Create New Garden" button
+   - Ensure proper connection of garden operations to Redux store
+
+4. **Element Interaction**:
+   - Establish proper connection between palette and canvas
+   - Fix element addition from palette to canvas
+   - Implement visual indicators for selected elements
+
 ## Getting Started
 
 ### Prerequisites
