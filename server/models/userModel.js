@@ -1,69 +1,95 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
 const bcrypt = require('bcryptjs');
+const { sequelize } = require('../config/db');
 
-const userSchema = mongoose.Schema(
-  {
-    name: {
-      type: String,
-      required: true,
-    },
-    email: {
-      type: String,
-      required: true,
-      unique: true,
-      lowercase: true,
-      trim: true,
-    },
-    password: {
-      type: String,
-      required: true,
-    },
-    isAdmin: {
-      type: Boolean,
-      required: true,
-      default: false,
-    },
-    subscription: {
-      type: String,
-      enum: ['free', 'premium', 'annual'],
-      default: 'free',
-    },
-    location: {
-      type: String,
-      default: '',
-    },
-    hardinessZone: {
-      type: String,
-      default: '',
-    },
-    createdAt: {
-      type: Date,
-      default: Date.now,
-    },
+const User = sequelize.define('User', {
+  name: {
+    type: DataTypes.STRING,
+    allowNull: false
   },
-  {
-    timestamps: true,
+  email: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    unique: true,
+    validate: {
+      isEmail: true
+    }
+  },
+  password: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  isAdmin: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false
+  },
+  subscription: {
+    type: DataTypes.ENUM('free', 'premium', 'annual'),
+    defaultValue: 'free'
+  },
+  location: {
+    type: DataTypes.STRING,
+    defaultValue: ''
+  },
+  hardinessZone: {
+    type: DataTypes.STRING,
+    defaultValue: ''
   }
-);
+}, {
+  // Other model options
+  timestamps: true,
+  
+  // Method to exclude password when converting to JSON
+  defaultScope: {
+    attributes: { exclude: ['password'] }
+  },
+  scopes: {
+    withPassword: {
+      attributes: {}
+    }
+  }
+});
 
-// Method to check if password matches
-userSchema.methods.matchPassword = async function (enteredPassword) {
+// Model hooks - similar to Mongoose middleware
+User.beforeCreate(async (user) => {
+  if (user.password) {
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(user.password, salt);
+  }
+});
+
+User.beforeUpdate(async (user) => {
+  if (user.changed('password')) {
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(user.password, salt);
+  }
+});
+
+// Instance methods
+User.prototype.matchPassword = async function(enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
-// Middleware to hash password before saving
-userSchema.pre('save', async function (next) {
-  // Only hash the password if it's been modified (or is new)
-  if (!this.isModified('password')) {
-    return next();
+// Define associations (like Mongoose refs)
+// This will be run after all models are defined
+const setupAssociations = () => {
+  const Garden = sequelize.models.Garden;
+  const Plant = sequelize.models.Plant;
+  
+  if (Garden) {
+    User.hasMany(Garden, {
+      foreignKey: 'userId',
+      as: 'gardens'
+    });
   }
+  
+  if (Plant) {
+    User.hasMany(Plant, {
+      foreignKey: 'createdBy',
+      as: 'plants'
+    });
+  }
+};
 
-  // Generate salt and hash password
-  const salt = await bcrypt.genSalt(10);
-  this.password = await bcrypt.hash(this.password, salt);
-  next();
-});
-
-const User = mongoose.model('User', userSchema);
-
-module.exports = User;
+module.exports = { User, setupAssociations };
