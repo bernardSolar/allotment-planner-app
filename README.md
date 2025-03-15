@@ -84,6 +84,17 @@ An interactive web application for planning and tracking allotment gardens with 
    - Integration with seed suppliers
    - AI recommendations based on past successes
 
+## Development Progress
+
+### March 15, 2025 - Garden Planner Implementation
+- Added interactive SVG-based garden canvas with drag-and-drop functionality
+- Implemented garden elements palette with categorized garden components
+- Created visual representation of different garden elements (beds, plants, trees)
+- Added pan and zoom functionality to the garden canvas
+- Integrated Redux state management for garden data
+- Implemented garden creation, selection, and management UI
+- Added comprehensive documentation for the garden planner components
+
 ## Getting Started
 
 ### Prerequisites
@@ -168,10 +179,12 @@ An interactive web application for planning and tracking allotment gardens with 
 │   └── src/               # React source files
 │       ├── assets/        # Images, icons, etc.
 │       ├── components/    # Reusable components
+│       │   └── garden/    # Garden planner components
 │       ├── contexts/      # React contexts
 │       ├── hooks/         # Custom React hooks
 │       ├── pages/         # Application pages
 │       ├── services/      # API service calls
+│       ├── slices/        # Redux toolkit slices
 │       └── utils/         # Utility functions
 │
 ├── server/                # Backend Node.js/Express application
@@ -183,9 +196,8 @@ An interactive web application for planning and tracking allotment gardens with 
 │   ├── services/          # Business logic
 │   └── utils/             # Utility functions
 │
-└── shared/                # Shared code between frontend and backend
-    ├── constants/         # Shared constants
-    └── types/             # TypeScript type definitions
+└── docs/                  # Documentation
+    └── GARDEN_PLANNER_INTEGRATION.md # Garden planner integration guide
 ```
 
 ## Frontend Development
