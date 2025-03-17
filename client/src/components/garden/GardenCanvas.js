@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import styled from 'styled-components';
 import { Stage, Layer, Rect, Group } from 'react-konva';
@@ -20,6 +20,11 @@ const CanvasContainer = styled.div`
   margin-bottom: 20px;
   height: 500px;
   position: relative;
+  
+  &.drop-active {
+    border: 2px dashed var(--primary);
+    background-color: rgba(0, 0, 0, 0.02);
+  }
 `;
 
 const Controls = styled.div`
@@ -57,6 +62,7 @@ const GardenCanvas = ({ garden }) => {
   const dispatch = useDispatch();
   const selectedElement = useSelector((state) => state.gardens.selectedElement);
   const stageRef = useRef(null);
+  const containerRef = useRef(null);
   
   // Canvas state
   const [scale, setScale] = useState(1);
@@ -64,14 +70,14 @@ const GardenCanvas = ({ garden }) => {
   const [gridSize, setGridSize] = useState(30); // Size of each grid cell in pixels
   const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
   const [isDragging, setIsDragging] = useState(false);
+  const [isDropTarget, setIsDropTarget] = useState(false);
   
   // Initialize stage size on mount
   useEffect(() => {
-    const container = document.getElementById('garden-canvas-container');
-    if (container) {
+    if (containerRef.current) {
       setStageSize({
-        width: container.offsetWidth,
-        height: container.offsetHeight,
+        width: containerRef.current.offsetWidth,
+        height: containerRef.current.offsetHeight,
       });
     }
   }, []);
@@ -79,11 +85,10 @@ const GardenCanvas = ({ garden }) => {
   // Handle window resize
   useEffect(() => {
     const handleResize = () => {
-      const container = document.getElementById('garden-canvas-container');
-      if (container) {
+      if (containerRef.current) {
         setStageSize({
-          width: container.offsetWidth,
-          height: container.offsetHeight,
+          width: containerRef.current.offsetWidth,
+          height: containerRef.current.offsetHeight,
         });
       }
     };
@@ -91,6 +96,64 @@ const GardenCanvas = ({ garden }) => {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+  
+  // Handle drag and drop from palette to canvas
+  const handleDragOver = useCallback((e) => {
+    e.preventDefault();
+    setIsDropTarget(true);
+  }, []);
+  
+  const handleDragEnter = useCallback((e) => {
+    e.preventDefault();
+    setIsDropTarget(true);
+  }, []);
+  
+  const handleDragLeave = useCallback((e) => {
+    e.preventDefault();
+    setIsDropTarget(false);
+  }, []);
+  
+  const handleDrop = useCallback((e) => {
+    e.preventDefault();
+    setIsDropTarget(false);
+    
+    if (!garden || !garden._id) {
+      console.warn('No garden selected. Please select or create a garden first.');
+      return;
+    }
+    
+    try {
+      // Get element data from the drag event
+      const elementData = JSON.parse(e.dataTransfer.getData('application/json'));
+      if (!elementData) return;
+      
+      // Get the drop position relative to the canvas
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const dropX = e.clientX - containerRect.left;
+      const dropY = e.clientY - containerRect.top;
+      
+      // Convert the drop position to grid position
+      const gridX = Math.round((dropX - position.x) / scale / gridSize);
+      const gridY = Math.round((dropY - position.y) / scale / gridSize);
+      
+      // Create a new element with the drop position
+      const newElement = {
+        ...elementData,
+        position: { x: gridX, y: gridY }
+      };
+      
+      // Add element to garden
+      dispatch(addElement({
+        gardenId: garden._id,
+        element: newElement,
+      }));
+      
+      // Clear the selected element to prevent automatic addition
+      dispatch(clearSelectedElement());
+    } catch (error) {
+      console.error('Error processing dropped element:', error);
+    }
+  }, [garden, position, scale, gridSize, dispatch]);
   
   // Click on empty canvas to clear selection
   const handleStageClick = (e) => {
@@ -246,14 +309,55 @@ const GardenCanvas = ({ garden }) => {
   
   if (!garden) {
     return (
-      <CanvasContainer id="garden-canvas-container">
+      <CanvasContainer
+        id="garden-canvas-container"
+        ref={containerRef}
+      >
         <p>No garden selected</p>
       </CanvasContainer>
     );
   }
   
   return (
-    <CanvasContainer id="garden-canvas-container">
+    <CanvasContainer
+      id="garden-canvas-container"
+      ref={containerRef}
+      className={isDropTarget ? 'drop-active' : ''}
+      onDragOver={handleDragOver}
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {isDropTarget && (
+        <div 
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 10,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            pointerEvents: 'none',
+          }}
+        >
+          <div
+            style={{
+              padding: '10px 20px',
+              backgroundColor: 'rgba(255,255,255,0.8)',
+              borderRadius: '4px',
+              border: '1px solid var(--primary)',
+              fontSize: '14px',
+              color: 'var(--primary)',
+            }}
+          >
+            Drop element here
+          </div>
+        </div>
+      )}
+      
       <Controls>
         <ControlButton onClick={handleZoomIn}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

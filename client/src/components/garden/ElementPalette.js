@@ -61,13 +61,18 @@ const ElementCard = styled.div`
   border: 1px solid #eee;
   border-radius: 4px;
   padding: 10px;
-  cursor: pointer;
+  cursor: grab;
   transition: all 0.2s;
   
   &:hover {
     background-color: #f0f0f0;
     transform: translateY(-2px);
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  }
+  
+  &:active {
+    cursor: grabbing;
+    transform: scale(0.95);
   }
 `;
 
@@ -220,7 +225,55 @@ const elementCategories = {
 const ElementPalette = ({ gardenId = null }) => {
   const dispatch = useDispatch();
   const [activeCategory, setActiveCategory] = useState('structures');
+  const [draggedElement, setDraggedElement] = useState(null);
   
+  // Handle element selection and preparation for drag
+  const handleElementDragStart = (e, element) => {
+    // Skip if no garden is selected
+    if (!gardenId) {
+      console.warn('No garden selected. Please select or create a garden first.');
+      return;
+    }
+    
+    // Create a new element based on the template
+    const newElement = {
+      ...element,
+      id: `${element.id}-${Date.now()}`,
+      position: { x: 0, y: 0 }, // Default position, will be updated when placed
+      name: element.name
+    };
+    
+    // Set the element being dragged
+    setDraggedElement(newElement);
+    
+    // Store element data in the drag event for the drop target
+    e.dataTransfer.setData('application/json', JSON.stringify(newElement));
+    
+    // Set a custom drag image (optional - could be improved)
+    const dragImage = document.createElement('div');
+    dragImage.style.width = '60px';
+    dragImage.style.height = '60px';
+    dragImage.style.backgroundImage = 'url(data:image/svg+xml;base64,' + btoa('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50"><circle cx="25" cy="25" r="20" fill="#4CAF50"/></svg>') + ')';
+    dragImage.style.position = 'absolute';
+    dragImage.style.top = '-1000px';
+    document.body.appendChild(dragImage);
+    
+    try {
+      e.dataTransfer.setDragImage(dragImage, 30, 30);
+    } catch (err) {
+      console.warn('Error setting drag image:', err);
+    }
+    
+    // Notify the Redux store that an element is being dragged
+    dispatch(setSelectedElement(newElement));
+  };
+  
+  const handleElementDragEnd = () => {
+    setDraggedElement(null);
+    // We don't clear selectedElement here because the canvas needs it for placement
+  };
+  
+  // Handle click as well for mobile or touch devices without drag events
   const handleElementClick = (element) => {
     // Skip if no garden is selected
     if (!gardenId) {
@@ -275,7 +328,10 @@ const ElementPalette = ({ gardenId = null }) => {
       <ElementGrid>
         {elementCategories[activeCategory].map((element) => (
           <ElementCard 
-            key={element.id} 
+            key={element.id}
+            draggable="true"
+            onDragStart={(e) => handleElementDragStart(e, element)}
+            onDragEnd={handleElementDragEnd}
             onClick={() => handleElementClick(element)}
           >
             <ElementIcon>
