@@ -31,7 +31,9 @@ const connectDB = async () => {
     // Note: In production, you might want to use migrations instead
     if (process.env.NODE_ENV === 'development') {
       console.log('Syncing database models...');
-      await sequelize.sync({ alter: true });
+      // Using force: true will drop tables if they exist and recreate them
+      // This is a temporary fix for the "Too many keys" error
+      await sequelize.sync({ force: true });
       console.log('Database models synchronized');
     }
   } catch (error) {

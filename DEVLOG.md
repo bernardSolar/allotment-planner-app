@@ -72,3 +72,8 @@ We performed major refactoring of the codebase to improve modularity and maintai
 - Standardized element representation in both palette and canvas
 - Added collision detection to prevent element overlap
 - Centralized styling and configuration
+
+### Bug Fixes
+- Fixed database initialization issue (MySQL "Too many keys" error) by using force sync temporarily
+- Resolved React hook dependencies in GardenElement components
+- Fixed event propagation issues with drag and drop functionality
