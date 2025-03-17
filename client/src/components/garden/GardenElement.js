@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React from 'react';
 import { Group, Rect, Text, Circle } from 'react-konva';
 
 const GardenElement = ({
@@ -7,50 +7,34 @@ const GardenElement = ({
   isSelected = false,
   onClick = () => {},
   onDragEnd = () => {},
-  onResize = () => {},
   draggable = true,
   scale = 1,
 }) => {
-  // Handle both formats of element position (x/y properties directly or nested in position object)
-  const getInitialPosition = useCallback(() => {
-    if (!element) {
-      return { x: 0, y: 0 };
-    }
+  // Get position in pixels from grid units
+  const getPixelPosition = () => {
+    if (!element) return { x: 0, y: 0 };
     
+    // Handle both position formats
     if (element.position) {
       return {
         x: element.position.x * gridSize,
-        y: element.position.y * gridSize,
+        y: element.position.y * gridSize
       };
     } else if (element.x !== undefined && element.y !== undefined) {
       return {
         x: element.x * gridSize,
-        y: element.y * gridSize,
+        y: element.y * gridSize
       };
-    } else {
-      // Default position if none specified
-      return { x: 0, y: 0 };
-    }
-  }, [element, gridSize]);
-  
-  // Convert element position from grid units to pixels
-  const [position, setPosition] = useState(getInitialPosition());
-  
-  // State to track resizing
-  const [isResizing, setIsResizing] = useState(false);
-  const [resizePreview, setResizePreview] = useState(null);
-
-  // Update position when gridSize or element position changes
-  useEffect(() => {
-    setPosition(getInitialPosition());
-  }, [getInitialPosition]);
-
-  // Element width and height in pixels (handle different formats)
-  const getElementDimensions = useCallback(() => {
-    if (!element) {
-      return { width: gridSize, height: gridSize };
     }
     
+    return { x: 0, y: 0 };
+  };
+  
+  // Get element dimensions in pixels
+  const getPixelDimensions = () => {
+    if (!element) return { width: gridSize, height: gridSize };
+    
+    // Handle both dimension formats
     if (element.dimensions) {
       return {
         width: element.dimensions.width * gridSize,
@@ -61,130 +45,44 @@ const GardenElement = ({
         width: element.width * gridSize,
         height: element.height * gridSize
       };
-    } else {
-      // Default dimensions
-      return {
-        width: gridSize,
-        height: gridSize
-      };
     }
-  }, [element, gridSize]);
+    
+    return { width: gridSize, height: gridSize };
+  };
   
   // If no element is provided, don't render anything
-  if (!element) {
-    return null;
-  }
+  if (!element) return null;
   
-  const { width, height } = getElementDimensions();
-
-  // Handle element drag
+  // Get current position and dimensions
+  const position = getPixelPosition();
+  const { width, height } = getPixelDimensions();
+  
+  // Handle drag start
+  const handleDragStart = () => {
+    // Notify other components that dragging has started
+    // This could be used to highlight drop zones
+  };
+  
+  // Handle drag move for real-time feedback
+  const handleDragMove = () => {
+    // For potential collision detection in the future
+  };
+  
+  // Handle drag end - this is where we update the element's position
   const handleDragEnd = (e) => {
+    // Get the absolute position after drag
     const newPosition = {
       x: e.target.x(),
-      y: e.target.y(),
-    };
-    setPosition(newPosition);
-    onDragEnd(element, newPosition);
-  };
-  
-  // Calculate the original aspect ratio
-  const aspectRatio = element.dimensions ? 
-    element.dimensions.width / element.dimensions.height : 
-    (element.width && element.height) ? element.width / element.height : 1;
-  
-  // Start resizing
-  const handleResizeStart = (e, corner) => {
-    if (!isSelected) return;
-    setIsResizing(true);
-    e.cancelBubble = true; // Prevent propagation
-  };
-  
-  // Handle resize move - update preview
-  const handleResizeMove = (e, corner) => {
-    if (!isResizing || !isSelected) return;
-    
-    // Get the position of the pointer relative to the stage
-    const stage = e.target.getStage();
-    const pointerPosition = stage.getPointerPosition();
-    const stageBox = stage.container().getBoundingClientRect();
-    
-    // Convert pointer position to local coordinates
-    const localPos = {
-      x: (pointerPosition.x - stageBox.left - stage.x()) / scale,
-      y: (pointerPosition.y - stageBox.top - stage.y()) / scale
+      y: e.target.y()
     };
     
-    // Calculate the element's absolute position in stage coordinates
-    const absElementPos = {
-      x: position.x,
-      y: position.y
-    };
+    // Log for debugging
+    console.log(`Dragged element ${element.id} to position:`, newPosition);
     
-    // Calculate new dimensions based on which corner is being dragged
-    let newWidth, newHeight;
-    
-    if (corner === 'bottomRight') {
-      // Calculate dimensions from top-left to pointer
-      newWidth = Math.max(gridSize, localPos.x - absElementPos.x);
-      newHeight = Math.max(gridSize, localPos.y - absElementPos.y);
-    } else if (corner === 'bottomLeft') {
-      // Calculate width from right edge to pointer, height from top to pointer
-      newWidth = Math.max(gridSize, (absElementPos.x + width) - localPos.x);
-      newHeight = Math.max(gridSize, localPos.y - absElementPos.y);
-    } else if (corner === 'topRight') {
-      // Calculate width from left to pointer, height from bottom to pointer
-      newWidth = Math.max(gridSize, localPos.x - absElementPos.x);
-      newHeight = Math.max(gridSize, (absElementPos.y + height) - localPos.y);
-    } else if (corner === 'topLeft') {
-      // Calculate dimensions from bottom-right to pointer
-      newWidth = Math.max(gridSize, (absElementPos.x + width) - localPos.x);
-      newHeight = Math.max(gridSize, (absElementPos.y + height) - localPos.y);
-    }
-    
-    // Maintain aspect ratio
-    if (corner === 'bottomRight' || corner === 'topLeft') {
-      // Use width to determine height
-      newHeight = newWidth / aspectRatio;
-    } else {
-      // Use height to determine width
-      newWidth = newHeight * aspectRatio;
-    }
-    
-    // Round to nearest grid size
-    newWidth = Math.round(newWidth / gridSize) * gridSize;
-    newHeight = Math.round(newHeight / gridSize) * gridSize;
-    
-    // Constraint: can't be larger than canvas
-    const canvasWidth = stage.width() / scale;
-    const canvasHeight = stage.height() / scale;
-    newWidth = Math.min(newWidth, canvasWidth - absElementPos.x);
-    newHeight = Math.min(newHeight, canvasHeight - absElementPos.y);
-    
-    // Update the resize preview
-    setResizePreview({ width: newWidth, height: newHeight });
+    // Pass the updated position to the parent component
+    onDragEnd(newPosition);
   };
   
-  // End resizing and apply changes
-  const handleResizeEnd = (e, corner) => {
-    if (!isResizing || !isSelected || !resizePreview) return;
-    
-    // Convert to grid units
-    const gridWidth = Math.max(1, Math.round(resizePreview.width / gridSize));
-    const gridHeight = Math.max(1, Math.round(resizePreview.height / gridSize));
-    
-    // Update dimensions in parent component
-    if (onResize) {
-      onResize(element, {
-        width: gridWidth,
-        height: gridHeight
-      });
-    }
-    
-    // Reset resizing state
-    setIsResizing(false);
-    setResizePreview(null);
-  };
-
   // Get appropriate color based on element type
   const getColor = () => {
     switch (element.type) {
@@ -335,99 +233,51 @@ const GardenElement = ({
       y={position.y}
       width={width}
       height={height}
-      draggable={draggable}
-      onDragEnd={handleDragEnd}
+      draggable={isSelected} // Only allow dragging if selected
       onClick={onClick}
       onTap={onClick}
+      onDragStart={(e) => {
+        // Prevent propagation to stop the stage from handling the drag
+        e.cancelBubble = true;
+        console.log("ELEMENT drag start:", element.id);
+        handleDragStart();
+      }}
+      onDragMove={(e) => {
+        // Prevent propagation to stop the stage from handling the drag
+        e.cancelBubble = true;
+        console.log("ELEMENT drag move:", element.id, e.target.x(), e.target.y());
+        handleDragMove();
+      }}
+      onDragEnd={(e) => {
+        // Prevent propagation to stop the stage from handling the drag
+        e.cancelBubble = true;
+        console.log("ELEMENT drag end:", element.id, e.target.x(), e.target.y());
+        handleDragEnd(e);
+      }}
     >
       {renderElement()}
 
       {/* Selection indicators when selected */}
       {isSelected && (
         <>
-          {/* Corner handles for resizing with drag events */}
-          <Circle 
-            x={0} 
-            y={0} 
-            radius={6 / scale} 
-            fill="#FFC107" 
-            stroke="#FF9800" 
-            strokeWidth={1 / scale}
-            draggable={true}
-            onDragStart={(e) => handleResizeStart(e, 'topLeft')}
-            onDragMove={(e) => handleResizeMove(e, 'topLeft')}
-            onDragEnd={(e) => handleResizeEnd(e, 'topLeft')}
-            cursor="nwse-resize"
-          />
-          <Circle 
-            x={width} 
-            y={0} 
-            radius={6 / scale} 
-            fill="#FFC107" 
-            stroke="#FF9800" 
-            strokeWidth={1 / scale}
-            draggable={true}
-            onDragStart={(e) => handleResizeStart(e, 'topRight')}
-            onDragMove={(e) => handleResizeMove(e, 'topRight')}
-            onDragEnd={(e) => handleResizeEnd(e, 'topRight')}
-            cursor="nesw-resize"
-          />
-          <Circle 
-            x={0} 
-            y={height} 
-            radius={6 / scale} 
-            fill="#FFC107" 
-            stroke="#FF9800" 
-            strokeWidth={1 / scale}
-            draggable={true}
-            onDragStart={(e) => handleResizeStart(e, 'bottomLeft')}
-            onDragMove={(e) => handleResizeMove(e, 'bottomLeft')}
-            onDragEnd={(e) => handleResizeEnd(e, 'bottomLeft')}
-            cursor="nesw-resize"
-          />
-          <Circle
-            x={width}
-            y={height}
-            radius={6 / scale}
-            fill="#FFC107"
+          {/* Simple selection outline */}
+          <Rect
+            x={0}
+            y={0}
+            width={width}
+            height={height}
             stroke="#FF9800"
-            strokeWidth={1 / scale}
-            draggable={true}
-            onDragStart={(e) => handleResizeStart(e, 'bottomRight')}
-            onDragMove={(e) => handleResizeMove(e, 'bottomRight')}
-            onDragEnd={(e) => handleResizeEnd(e, 'bottomRight')}
-            cursor="nwse-resize"
+            strokeWidth={2 / scale}
+            dash={[5 / scale, 5 / scale]}
+            fill="transparent"
+            listening={false}
           />
           
-          {/* Resize preview outline */}
-          {isResizing && resizePreview && (
-            <Rect
-              x={0}
-              y={0}
-              width={resizePreview.width}
-              height={resizePreview.height}
-              stroke="#4CAF50"
-              strokeWidth={2 / scale}
-              dash={[5 / scale, 5 / scale]}
-              fill="rgba(76, 175, 80, 0.2)"
-              listening={false}
-            />
-          )}
-          
-          {/* Selection outline */}
-          {!isResizing && (
-            <Rect
-              x={0}
-              y={0}
-              width={width}
-              height={height}
-              stroke="#FF9800"
-              strokeWidth={2 / scale}
-              dash={[5 / scale, 5 / scale]}
-              fill="transparent"
-              listening={false}
-            />
-          )}
+          {/* Corner handles for visual feedback only */}
+          <Circle x={0} y={0} radius={4 / scale} fill="#FFC107" stroke="#FF9800" strokeWidth={1 / scale} />
+          <Circle x={width} y={0} radius={4 / scale} fill="#FFC107" stroke="#FF9800" strokeWidth={1 / scale} />
+          <Circle x={0} y={height} radius={4 / scale} fill="#FFC107" stroke="#FF9800" strokeWidth={1 / scale} />
+          <Circle x={width} y={height} radius={4 / scale} fill="#FFC107" stroke="#FF9800" strokeWidth={1 / scale} />
         </>
       )}
     </Group>

@@ -222,18 +222,108 @@ const GardenCanvas = ({ garden }) => {
       return;
     }
     
-    // Convert pixel position to grid position
-    const gridPosition = {
-      x: Math.round(newPosition.x / gridSize),
-      y: Math.round(newPosition.y / gridSize),
-    };
+    console.log("Canvas received drag end:", element.id, newPosition);
+    
+    // Allow free positioning (not snapped to grid)
+    const newX = newPosition.x;
+    const newY = newPosition.y;
+    
+    // Check for collision with other elements (don't allow overlap)
+    const isColliding = garden.elements.some(otherElement => {
+      // Skip checking against itself or background
+      if (otherElement.id === element.id || otherElement.type === 'background') {
+        return false;
+      }
+      
+      // Get other element's position
+      let otherX, otherY, otherWidth, otherHeight;
+      
+      if (otherElement.position) {
+        otherX = otherElement.position.x * gridSize;
+        otherY = otherElement.position.y * gridSize;
+      } else {
+        otherX = otherElement.x * gridSize;
+        otherY = otherElement.y * gridSize;
+      }
+      
+      if (otherElement.dimensions) {
+        otherWidth = otherElement.dimensions.width * gridSize;
+        otherHeight = otherElement.dimensions.height * gridSize;
+      } else {
+        otherWidth = otherElement.width * gridSize;
+        otherHeight = otherElement.height * gridSize;
+      }
+      
+      // Get this element's dimensions
+      let thisWidth, thisHeight;
+      if (element.dimensions) {
+        thisWidth = element.dimensions.width * gridSize;
+        thisHeight = element.dimensions.height * gridSize;
+      } else {
+        thisWidth = element.width * gridSize;
+        thisHeight = element.height * gridSize;
+      }
+      
+      // Check for overlap
+      return (
+        newX < otherX + otherWidth &&
+        newX + thisWidth > otherX &&
+        newY < otherY + otherHeight &&
+        newY + thisHeight > otherY
+      );
+    });
+    
+    // If colliding, don't update position
+    if (isColliding) {
+      console.log("Collision detected, preventing overlap");
+      return;
+    }
+    
+    // Create a new element with updated position
+    const updatedElement = { ...element };
+    
+    // Convert to grid units for storage
+    const gridX = newX / gridSize;
+    const gridY = newY / gridSize;
+    
+    // Update position based on the format used by the element
+    if (updatedElement.position) {
+      updatedElement.position = { 
+        x: gridX, 
+        y: gridY 
+      };
+    } else {
+      updatedElement.x = gridX;
+      updatedElement.y = gridY;
+    }
     
     // Update element in store
     dispatch(updateElement({
       gardenId: garden._id,
+      element: updatedElement,
+    }));
+  };
+  
+  // Handle element resize
+  const handleElementResize = (element, newDimensions) => {
+    // Skip if no garden is selected
+    if (!garden || !garden._id) {
+      console.warn('No garden selected. Please select or create a garden first.');
+      return;
+    }
+    
+    // Calculate dimensions in grid units
+    const dimensions = {
+      width: Math.max(1, Math.round(newDimensions.width)),
+      height: Math.max(1, Math.round(newDimensions.height))
+    };
+    
+    // Update element in store with new dimensions
+    dispatch(updateElement({
+      gardenId: garden._id,
       element: {
         ...element,
-        position: gridPosition,
+        dimensions: dimensions,
       },
     }));
   };
@@ -386,7 +476,7 @@ const GardenCanvas = ({ garden }) => {
         ref={stageRef}
         width={stageSize.width}
         height={stageSize.height}
-        draggable={!selectedElement}
+        draggable={!selectedElement} // Only allow canvas panning when no element is selected
         x={position.x}
         y={position.y}
         scaleX={scale}
@@ -421,7 +511,10 @@ const GardenCanvas = ({ garden }) => {
                 gridSize={gridSize}
                 isSelected={selectedElement?.id === element.id}
                 onClick={() => handleElementClick(element)}
-                onDragEnd={(newPosition) => handleElementDragEnd(element, newPosition)}
+                onDragEnd={(newPosition) => {
+                  console.log("Element dragged:", element.id, newPosition);
+                  handleElementDragEnd(element, newPosition);
+                }}
                 draggable={!isDragging}
                 scale={scale}
               />
