@@ -1,6 +1,25 @@
+/**
+ * Component for rendering an individual garden element on the canvas
+ */
 import React from 'react';
 import { Group, Rect, Text, Circle } from 'react-konva';
+import { getElementPixelPosition, getElementPixelDimensions } from '../../utils/positionUtils';
+import { getElementColor, getElementStrokeWidth, getElementStrokeColor } from '../../utils/elementUtils';
+import { CORNER_HANDLE_RADIUS } from '../../config/gridConfig';
 
+/**
+ * Renders a garden element (bed, plant, tree, etc.)
+ * 
+ * @param {Object} props - Component props
+ * @param {Object} props.element - The element data
+ * @param {number} props.gridSize - Size of grid cells in pixels
+ * @param {boolean} props.isSelected - Whether the element is selected
+ * @param {Function} props.onClick - Handler for element click
+ * @param {Function} props.onDragEnd - Handler for element drag end
+ * @param {boolean} props.draggable - Whether the element can be dragged
+ * @param {number} props.scale - Current zoom scale
+ * @returns {JSX.Element} - The rendered component
+ */
 const GardenElement = ({
   element,
   gridSize = 30,
@@ -10,65 +29,17 @@ const GardenElement = ({
   draggable = true,
   scale = 1,
 }) => {
-  // Get position in pixels from grid units
-  const getPixelPosition = () => {
-    if (!element) return { x: 0, y: 0 };
-    
-    // Handle both position formats
-    if (element.position) {
-      return {
-        x: element.position.x * gridSize,
-        y: element.position.y * gridSize
-      };
-    } else if (element.x !== undefined && element.y !== undefined) {
-      return {
-        x: element.x * gridSize,
-        y: element.y * gridSize
-      };
-    }
-    
-    return { x: 0, y: 0 };
-  };
-  
-  // Get element dimensions in pixels
-  const getPixelDimensions = () => {
-    if (!element) return { width: gridSize, height: gridSize };
-    
-    // Handle both dimension formats
-    if (element.dimensions) {
-      return {
-        width: element.dimensions.width * gridSize,
-        height: element.dimensions.height * gridSize
-      };
-    } else if (element.width !== undefined && element.height !== undefined) {
-      return {
-        width: element.width * gridSize,
-        height: element.height * gridSize
-      };
-    }
-    
-    return { width: gridSize, height: gridSize };
-  };
-  
   // If no element is provided, don't render anything
   if (!element) return null;
   
-  // Get current position and dimensions
-  const position = getPixelPosition();
-  const { width, height } = getPixelDimensions();
+  // Get position and dimensions in pixels
+  const position = getElementPixelPosition(element, gridSize);
+  const { width, height } = getElementPixelDimensions(element, gridSize);
   
-  // Handle drag start
-  const handleDragStart = () => {
-    // Notify other components that dragging has started
-    // This could be used to highlight drop zones
-  };
-  
-  // Handle drag move for real-time feedback
-  const handleDragMove = () => {
-    // For potential collision detection in the future
-  };
-  
-  // Handle drag end - this is where we update the element's position
+  /**
+   * Handle element drag end
+   * @param {Object} e - Drag event
+   */
   const handleDragEnd = (e) => {
     // Get the absolute position after drag
     const newPosition = {
@@ -76,40 +47,21 @@ const GardenElement = ({
       y: e.target.y()
     };
     
-    // Log for debugging
     console.log(`Dragged element ${element.id} to position:`, newPosition);
     
     // Pass the updated position to the parent component
     onDragEnd(newPosition);
   };
   
-  // Get appropriate color based on element type
-  const getColor = () => {
-    switch (element.type) {
-      case 'raisedBed':
-        return '#8D6E63'; // Brown for raised beds
-      case 'flatBed':
-        return '#A5D6A7'; // Light green for flat beds
-      case 'path':
-        return '#E0E0E0'; // Light gray for paths
-      case 'plant':
-        return element.color || '#4CAF50'; // Default plant color
-      case 'tree':
-        return '#43A047'; // Dark green for trees
-      case 'bush':
-        return '#66BB6A'; // Medium green for bushes
-      case 'structure':
-        return '#90A4AE'; // Blue-gray for structures
-      default:
-        return '#BDBDBD'; // Gray for other elements
-    }
-  };
-
-  // Render different types of elements
+  /**
+   * Renders the appropriate visual representation of the element
+   * based on its type
+   * @returns {JSX.Element} - Element representation
+   */
   const renderElement = () => {
-    const color = getColor();
-    const strokeWidth = isSelected ? 2 / scale : 1 / scale;
-    const strokeColor = isSelected ? '#FF9800' : '#757575';
+    const color = getElementColor(element);
+    const strokeWidth = getElementStrokeWidth(isSelected, scale);
+    const strokeColor = getElementStrokeColor(isSelected);
 
     switch (element.type) {
       case 'plant':
@@ -240,13 +192,11 @@ const GardenElement = ({
         // Prevent propagation to stop the stage from handling the drag
         e.cancelBubble = true;
         console.log("ELEMENT drag start:", element.id);
-        handleDragStart();
       }}
       onDragMove={(e) => {
         // Prevent propagation to stop the stage from handling the drag
         e.cancelBubble = true;
         console.log("ELEMENT drag move:", element.id, e.target.x(), e.target.y());
-        handleDragMove();
       }}
       onDragEnd={(e) => {
         // Prevent propagation to stop the stage from handling the drag
@@ -274,10 +224,38 @@ const GardenElement = ({
           />
           
           {/* Corner handles for visual feedback only */}
-          <Circle x={0} y={0} radius={4 / scale} fill="#FFC107" stroke="#FF9800" strokeWidth={1 / scale} />
-          <Circle x={width} y={0} radius={4 / scale} fill="#FFC107" stroke="#FF9800" strokeWidth={1 / scale} />
-          <Circle x={0} y={height} radius={4 / scale} fill="#FFC107" stroke="#FF9800" strokeWidth={1 / scale} />
-          <Circle x={width} y={height} radius={4 / scale} fill="#FFC107" stroke="#FF9800" strokeWidth={1 / scale} />
+          <Circle 
+            x={0} 
+            y={0} 
+            radius={CORNER_HANDLE_RADIUS / scale} 
+            fill="#FFC107" 
+            stroke="#FF9800" 
+            strokeWidth={1 / scale} 
+          />
+          <Circle 
+            x={width} 
+            y={0} 
+            radius={CORNER_HANDLE_RADIUS / scale} 
+            fill="#FFC107" 
+            stroke="#FF9800" 
+            strokeWidth={1 / scale} 
+          />
+          <Circle 
+            x={0} 
+            y={height} 
+            radius={CORNER_HANDLE_RADIUS / scale} 
+            fill="#FFC107" 
+            stroke="#FF9800" 
+            strokeWidth={1 / scale} 
+          />
+          <Circle 
+            x={width} 
+            y={height} 
+            radius={CORNER_HANDLE_RADIUS / scale} 
+            fill="#FFC107" 
+            stroke="#FF9800" 
+            strokeWidth={1 / scale} 
+          />
         </>
       )}
     </Group>
