@@ -1,32 +1,76 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Group, Rect, Text, Circle } from 'react-konva';
 
 const GardenElement = ({
   element,
-  gridSize,
-  isSelected,
-  onClick,
-  onDragEnd,
+  gridSize = 30,
+  isSelected = false,
+  onClick = () => {},
+  onDragEnd = () => {},
   draggable = true,
   scale = 1,
 }) => {
+  // Handle both formats of element position (x/y properties directly or nested in position object)
+  const getInitialPosition = useCallback(() => {
+    if (!element) {
+      return { x: 0, y: 0 };
+    }
+    
+    if (element.position) {
+      return {
+        x: element.position.x * gridSize,
+        y: element.position.y * gridSize,
+      };
+    } else if (element.x !== undefined && element.y !== undefined) {
+      return {
+        x: element.x * gridSize,
+        y: element.y * gridSize,
+      };
+    } else {
+      // Default position if none specified
+      return { x: 0, y: 0 };
+    }
+  }, [element, gridSize]);
+  
   // Convert element position from grid units to pixels
-  const [position, setPosition] = useState({
-    x: element.position.x * gridSize,
-    y: element.position.y * gridSize,
-  });
+  const [position, setPosition] = useState(getInitialPosition());
 
   // Update position when gridSize or element position changes
   useEffect(() => {
-    setPosition({
-      x: element.position.x * gridSize,
-      y: element.position.y * gridSize,
-    });
-  }, [element.position.x, element.position.y, gridSize]);
+    setPosition(getInitialPosition());
+  }, [getInitialPosition]);
 
-  // Element width and height in pixels
-  const width = element.dimensions.width * gridSize;
-  const height = element.dimensions.height * gridSize;
+  // Element width and height in pixels (handle different formats)
+  const getElementDimensions = useCallback(() => {
+    if (!element) {
+      return { width: gridSize, height: gridSize };
+    }
+    
+    if (element.dimensions) {
+      return {
+        width: element.dimensions.width * gridSize,
+        height: element.dimensions.height * gridSize
+      };
+    } else if (element.width !== undefined && element.height !== undefined) {
+      return {
+        width: element.width * gridSize,
+        height: element.height * gridSize
+      };
+    } else {
+      // Default dimensions
+      return {
+        width: gridSize,
+        height: gridSize
+      };
+    }
+  }, [element, gridSize]);
+  
+  // If no element is provided, don't render anything
+  if (!element) {
+    return null;
+  }
+  
+  const { width, height } = getElementDimensions();
 
   // Handle element drag
   const handleDragEnd = (e) => {

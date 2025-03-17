@@ -246,7 +246,7 @@ const GardenPlannerPage = () => {
             )}
           </GardenSelector>
           
-          <ElementPalette />
+          <ElementPalette gardenId={gardenDetails?._id} />
           
           <GardenCanvas garden={gardenDetails} />
         </>
